@@ -40,6 +40,12 @@ public class Vector
     return this;
   }
   
+  public float scalarMultiply(Vector v)
+  {
+    float result = x*v.x + y*v.y + z*v.z;
+    return result;
+  }
+  
   public Vector scaleBy(float value)
   {
     x = x * value;
@@ -47,10 +53,24 @@ public class Vector
     z = z * value;
     return this;
   }
+  
+  public Vector divisioneBy(float value)
+  {
+    x = x / value;
+    y = y / value;
+    z = z / value;
+    return this;
+  }
    
   public float length()
   {
     return (float) Math.sqrt(x*x + y*y + z*z);          
+  }
+  
+  public Vector negatiated()
+  {
+    Vector result = new Vector (-this.x, -this.y, -this.z);
+    return result;
   }
   
   public Vector negatiate()
@@ -65,6 +85,15 @@ public class Vector
   {
     float l = length();
     return new Vector(x / l, y / l, z / l);                
+  }
+  
+  public Vector normalize()
+  {
+    float l = length();
+    x /= l;
+    y /= l;
+    z /= l;
+    return this;
   }
   
   public Vector multiplied(Matrix m)
@@ -92,10 +121,10 @@ public class Vector
     return this;
   }
   
-  public Vector addFloat (float a, float b, float c)
+/*  public Vector addFloat (float a, float b, float c)
   {
     return new Vector(x + a, y + b, z + c);
-  }
+  }*/
   
   public Vector subtracted(Vector v)
   {

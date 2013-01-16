@@ -38,6 +38,12 @@ class MassPoint
 //END OF MASS POINT
 
 
+
+
+
+
+
+
 class InertialObject extends MassPoint
 {
   InertialObject(float mass, Vector position, float ix, float iy, float iz)
@@ -48,6 +54,8 @@ class InertialObject extends MassPoint
                                0.0, 0.0, 1.0 / iz);                         
     angles = new Vector();
     angularSpeeds = new Vector();
+    lineAcceleration = new Vector();
+    angularAcceleration = new Vector();
     localMomentum = new Vector();
     appliedMomentum = new Vector();
     localForce = new Vector();
@@ -61,20 +69,12 @@ class InertialObject extends MassPoint
   {
     super.clean();
     
-    localMomentum.x = 0.0;
-    localMomentum.y = 0.0;
-    localMomentum.z = 0.0;
-    
-    localForce.x = 0.0;
-    localForce.y = 0.0;
-    localForce.z = 0.0;
-    
-    appliedMomentum.x = 0.0;
-    appliedMomentum.y = 0.0;
-    appliedMomentum.z = 0.0;
+    localMomentum = new Vector();    
+    localForce = new Vector();
+    appliedMomentum = new Vector();
   }
   
-  void applyLocalForce(Vector force) // force in global CS
+  void applyLocalForce(Vector force)
   {
     localForce.add(force);
   }
@@ -82,36 +82,28 @@ class InertialObject extends MassPoint
   void update(float deltaTime)
   {
     updateCS();
-
-    //velocity.add(appliedForce.scaleBy(deltaTime * deltaTime / mass));
-    //Fspeed.update(velocity.x);
-    //velocity.x=Fspeed.x;
-    velocity.add(appliedForce.scaleBy(deltaTime / mass));
-    //compForce = appliedForce.
-    //velocity.add((coordinateSystem.multiply(localForce)).scaleBy(deltaTime * deltaTime / mass));
-    velocity.add((coordinateSystem.multiply(localForce)).scaleBy(deltaTime / mass));
-    lineAcceleration = velocity.divisionedBy(deltaTime);
-    //lineAcceleration.print("Line");
+    
+    //lineAcceleration = new Vector();
+    lineAcceleration.add(appliedForce.divisioneBy(mass));
+    lineAcceleration.add(coordinateSystem.multiply(localForce).divisioneBy(mass));
+    velocity.add(lineAcceleration.scaleBy(deltaTime));
     if (velocity.length() < 0.001) { //to prevent sliding
       velocity.x = 0.0;
       velocity.y = 0.0;
       velocity.z = 0.0;
     }
-    FlineAcceleration = FFlineaccel.update(lineAcceleration);
-    //velocity.divisionedBy(deltaTime).print("Acceleration");
     position.add(velocity);
-    //Либо inertial либо reverse matrix
-    angularSpeeds.add((appliedMomentum.multiplied(inertiaMatrix)).scaledBy(deltaTime));
+    
+    /*angularSpeeds.add((appliedMomentum.multiplied(inertiaMatrix)).scaledBy(deltaTime));
     angularSpeeds.add(((coordinateSystem.multiply(localMomentum)).multiplied(inertiaMatrix)).scaleBy(deltaTime));
-    angles.add(angularSpeeds.scaledBy(deltaTime));
     angularAcceleration = angularSpeeds.divisionedBy(deltaTime);
-    //FFaccel.update(angularAcceleration);
-    FangularAcceleration = FFangaccel.update(angularAcceleration);
-    //angularAcceleration.print("Not");
-    //FangularAcceleration.print("Kalman");
+    angles.add(angularSpeeds.scaledBy(deltaTime));*/
+    //angularAcceleration = new Vector();
+    angularAcceleration.add(appliedMomentum.multiplied(inertiaMatrix));
+    angularAcceleration.add((coordinateSystem.multiply(localMomentum)).multiplied(inertiaMatrix));
+    angularSpeeds.add(angularAcceleration.scaleBy(deltaTime));
+    angles.add(angularSpeeds.scaledBy(deltaTime));
   }
-
-
   
   void applyLocalMomentum(Vector momentum)
   {
@@ -124,43 +116,7 @@ class InertialObject extends MassPoint
   }
   
 ///////////////////////////////////
-//Отрисовка верхней зеленой линии.//Переделаю под свою
-  void drawUp(float size)
-  {
-    pushMatrix();
-      translate(position.x, position.y, position.z);
-      Vector localUp = new Vector(0.0, -1.0, 0.0);
-      Vector globalUp = (coordinateSystem.multiply(localUp)).scaleBy(size);
-      //Приводим размер вектора нормали к вектору g
-      float l = 0;
-      Vector normalized = new Vector(1.0, 1.0, 1.0);
-      l = (float)Math.sqrt((float)Math.pow((globalUp.x),2) + (float)Math.pow((globalUp.y),2) + (float)Math.pow((globalUp.z),2));
-      normalized = globalUp.scaledBy(98 / l);
-      noFill();
-      beginShape(LINES);
-      //Нормаль
-        stroke(0.0, 1.0, 0.0);
-        vertex(0.0, 0.0, 0.0);
-        vertex(normalized.x, normalized.y, normalized.z);
-      //Вектор g пока взял как 98
-        stroke(1.0, 0.0, 0.0);
-        vertex(0.0, 0.0, 0.0);
-        vertex(0.0, -98, 0.0);
-      //Разность между нормалью и вектором g
-        stroke(1.0, 1.0, 1.0);
-        vertex(normalized.x, normalized.y, normalized.z);
-        vertex(0.0, -98  , 0.0);
-       //Разность между нормалью и вектором g смещенное к началу координат. 
-        stroke(0.0, 1.0, 1.0);
-        vertex(0.0, 0.0, 0.0);
-        vertex((-normalized.x) * 3, (-98 - normalized.y) * 3  , (-normalized.z) * 3 );
-        //compForce.add(-normalized.x, -98 -normalized.y, -normalized.z);
-        compForce.x = -normalized.x;
-        compForce.y = -98 -normalized.y;
-        compForce.z = -normalized.z;
-      endShape();
-    popMatrix();    
-  }  
+  
 ///////////////////////////////////
 
   void applyGravity()
@@ -181,10 +137,11 @@ class InertialObject extends MassPoint
     mz.rotationZ(angles.z);
     
     
-    mx.multiplyBy(my);
-    mx.multiplyBy(mz);
+    mz.multiplyBy(my);
+    mz.multiplyBy(mx);
     
-    coordinateSystem = mx; 
+    coordinateSystem = mz;
+    //coordinateSystem.print("CS");
   }
   
   Matrix coordinateSystem, inertiaMatrix, reverseMatrix;

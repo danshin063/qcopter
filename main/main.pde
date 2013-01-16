@@ -1,3 +1,6 @@
+float gTotalTime = 0.0;
+float gAmpl = 3.0;
+
 Copter copter;
 cDataArray mxData = new cDataArray(200), myData = new cDataArray(200), mzData = new cDataArray(200), 
            fmxData = new cDataArray(200), fmyData = new cDataArray(200), fmzData = new cDataArray(200);
@@ -13,7 +16,8 @@ int xGraph3 = 880  ,yGraph3 = 400;  //координаты графика
 cGraph mz_graph  = new cGraph(xGraph3,yGraph3, wGraph3, hGraph3);/**/
 //Graphics grap;
 float baseEngineLevel = 0.5;
-float engineMouseSensitivity = 0.0001;
+float engineMouseSensitivity = 0.1;
+//float engineMouseSensitivity = 0.01;
 float stableSensitivity = 0.0;
 float engine1 = 0.0;
 float engine2 = 0.0;
@@ -31,24 +35,32 @@ int viewHeight = 720;
 void setup()
 {
   size (viewWidth, viewHeight, P3D);
+  camera (0.0, -100.0, gAmpl*500.0, 0.0, 0.0, 0.0, 0, 1, 0);
+  //camera (0.0, -1000.0, 0.0, 0.0, 0.0, 0.0, 0, 0, 1);
   colorMode(RGB, 1); 
-  
-  copter = new Copter(1.0, new Vector(400, 300, -230), 1.0, 1.0, 1.0,
+
+  copter = new Copter(1.0, new Vector(0.0, 0.0, 0.0), 1.0, 1.0, 1.0,
                            new ArrayList<Engine>(){{
-                             add(new Engine(new Vector(-1.0, 0.0, -1.0), 2.4526 * 2.0, 0.1, 1000, 1.0));
-                             add(new Engine(new Vector( 1.0, 0.0, -1.0), 2.4526 * 2.0, 0.1, 1000, -1.0));
-                             add(new Engine(new Vector( 1.0, 0.0,  1.0), 2.4526 * 2.0, 0.1, 1000, -1.0));
-                             add(new Engine(new Vector(-1.0, 0.0,  1.0), 2.4526 * 2.0, 0.1, 1000, 1.0));
+                             add(new Engine(new Vector(-1.0, 0.0, -1.0), 2.4526 * 2.0, 1.1, 1000, 400000, 1.0, 1.0));
+                             add(new Engine(new Vector( 1.0, 0.0, -1.0), 2.4526 * 2.0, 1.1, 1000, 400000,-1.0, 1.0));
+                             add(new Engine(new Vector( 1.0, 0.0,  1.0), 2.4526 * 2.0, 1.1, 1000, 400000, 1.0, 1.0));
+                             add(new Engine(new Vector(-1.0, 0.0,  1.0), 2.4526 * 2.0, 1.1, 1000, 400000,-1.0, 1.0));
                            }});
+  //copter.angles.z = HALF_PI/4;
+  //copter.angles.x = HALF_PI/2;
   updateEnginesLevers();
+  controlP5 = new ControlP5(this);
+  buttonRESET = controlP5.addButton("bRESET",1,210,480,40,19); buttonRESET.setLabel("RESET"); buttonRESET.setColorBackground(red_);
+  frameRate(100);
 }
 
 void updateEnginesLevers()
 {
-  copter.setEngineLever(0, baseEngineLevel + engine1);
-  copter.setEngineLever(1, baseEngineLevel + engine2);
-  copter.setEngineLever(2, baseEngineLevel + engine3);
-  copter.setEngineLever(3, baseEngineLevel + engine4);
+  copter.setEngineLever(0, baseEngineLevel + engine1 -0.0);
+  copter.setEngineLever(1, baseEngineLevel + engine2 +0.0);
+  copter.setEngineLever(2, baseEngineLevel + engine3 -0.0);
+  copter.setEngineLever(3, baseEngineLevel + engine4 +0.0);
+  //copter.angularSpeeds.print("Угловая скорость");
   //System.out.printf("%8.4f %8.4f %8.4f %8.4f", engine1, engine2, engine3, engine4);
 }
 
@@ -56,7 +68,7 @@ void updateEnginesLevers()
 void draw()
 {
   background(0.2);
-  copter.clean();
+  //copter.clean();
  if (keys['t']) {
    baseEngineLevel = 1.0;
  } else if (keys['g']) {
@@ -69,69 +81,43 @@ void draw()
  engine2 = keys['i']? engineMouseSensitivity : (keys['e']? -engineMouseSensitivity : 0);
  engine3 = keys['k']? engineMouseSensitivity : (keys['d']? -engineMouseSensitivity : 0);
  engine4 = keys['j']? engineMouseSensitivity : (keys['s']? -engineMouseSensitivity : 0);
+ /*
+ engine1 = keys['p']? engineMouseSensitivity : 0;
+ engine3 = keys['p']? engineMouseSensitivity : 0;*/
   
-  if ( ! (keys['u'] || keys['w'] || 
+  copter._shouldMove = ( ! (keys['f'] || keys['v'] || 
+ keys['c'] || keys['b'] || 
+ keys['k'] || keys['d']
+ ) );
+  
+ Vector moveDirection = new Vector(0, 0, 0); 
+ if (keys['f']) moveDirection.z -= 0.3;
+ if (keys['v']) moveDirection.z += 0.3;
+ if (keys['c']) moveDirection.x -= 0.3;
+ if (keys['b']) moveDirection.x += 0.3;
+ copter.setMoveDirection(moveDirection);
+ copter.course();
+  copter._shouldStabilize =  ( ! (keys['u'] || keys['w'] || 
  keys['i'] || keys['e'] || 
  keys['k'] || keys['d'] || 
- keys['j'] || keys['s']) )
- {
-   //System.out.println("Make stable");
+ keys['j'] || keys['s'] ||
+ keys['t'] || keys['g']
+ ) );
+ //copter._shouldStabilize = false;
 
 
-float k = -0.05;
-float nb1 = (float)Math.sqrt(2)/2;
-//Vector num1 = new Vector (nb1 , 0.0 , nb1);
-//Vector num2 = new Vector(-nb1 , 0.0 , nb1);
-//Vector num3 = new Vector(0.0, 0.0, 0.0);
-//Vector num4 = new Vector(0.0, 0.0, 0.0);
-//num3 = num1.multiply(copter.diff); 
-float defLen = 50 * (float)Math.sqrt(2);
-float rel1 = copter.diff1.length() / defLen;
-float rel2 = copter.diff2.length() / defLen;
-float rel3 = copter.diff3.length() / defLen;
-float rel4 = copter.diff4.length() / defLen;
-//copter.diff.
-float diff1 = 1 - rel1;
-float diff2 = 1 - rel2;
-float diff3 = 1 - rel3;
-float diff4 = 1 - rel4;
-i++;
-copter.angles.print("Angles");
-   engine1 = k * (diff1) + engine1 ;// ((float)Math.pow(copter.angularSpeeds.x + copter.angularSpeeds.z, 2) + (copter.angularSpeeds.x + copter.angularSpeeds.z) * 0.1);
-   engine2 = k * (diff2) + engine2 ;// ((float)Math.pow(copter.angularSpeeds.x + copter.angularSpeeds.z, 2) + (copter.angularSpeeds.x + copter.angularSpeeds.z) * 0.1);
-   engine3 = k * (diff3) - engine3 ;// ((float)Math.pow(copter.angularSpeeds.x + copter.angularSpeeds.z, 2) + (copter.angularSpeeds.x + copter.angularSpeeds.z) * 0.1);
-   engine4 = k * (diff4) - engine4 ;// ((float)Math.pow(copter.angularSpeeds.x + copter.angularSpeeds.z, 2) + (copter.angularSpeeds.x + copter.angularSpeeds.z) * 0.1);
-   //System.out.printf("%s = %8.4f %8.4f %8.4f %8.4f\n", "ENGINES", engine1, engine2, engine3, engine4);
-   //System.out.printf("%s = %8.4f %8.4f %8.4f %8.4f\n", "ENGINES", diff1, diff2, diff3, diff4);
-
- } 
-
- 
-  
  updateEnginesLevers();
    
-  copter.update(0.1);
+  copter.update(0.01);
+  gTotalTime += 0.01;
+  //System.out.printf("%f\n", gTotalTime);
   
   copter.drawCS(100.0, 1.0, 1.0, 1.0); // 100 - размер коптера 
   copter.drawUp(100.0);  //Зеленая линия вверх
-//Вывод угловых ускорений на граффики.
-
-   mxData.addVal(copter.angularAcceleration.x * 1000);
-   fmxData.addVal(copter.FangularAcceleration.x * 1000);
-   myData.addVal(copter.angularAcceleration.y * 1000);
-   fmyData.addVal(copter.FangularAcceleration.y * 1000);
-   mzData.addVal(copter.angularAcceleration.z * 1000);
-   fmzData.addVal(copter.FangularAcceleration.z * 1000);
-   
-//Вывод линейных ускорений на граффики.
- /*
-   mxData.addVal(copter.lineAcceleration.x * 10);
-   fmxData.addVal(copter.FlineAcceleration.x * 10);
-   myData.addVal(copter.lineAcceleration.y * 10);
-   fmyData.addVal(copter.FlineAcceleration.y * 10);
-   mzData.addVal(copter.lineAcceleration.z * 10);
-   fmzData.addVal(copter.FlineAcceleration.z * 10);
- */
+   mxData.addVal(copter.angles.x * 1000); 
+   myData.addVal(copter.angles.y * 1000);
+   mzData.addVal(copter.angles.z * 1000);
+ 
    
   strokeWeight(1);
   fill(255, 255, 255);
